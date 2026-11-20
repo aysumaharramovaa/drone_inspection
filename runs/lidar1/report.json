@@ -1,0 +1,20 @@
+{
+  "source": "sim",
+  "pose_mode": "scanmatch",
+  "scans": 1203,
+  "duration_s": 119.0,
+  "path_length_m": 70.2,
+  "free_area_m2": 378.5,
+  "occupied_cells": 3588,
+  "scan_match": {
+    "poor_matches": 0,
+    "mean_inlier_ratio": 0.981
+  },
+  "vs_ground_truth": {
+    "final_position_error_m": 0.14,
+    "rmse_position_m": 0.41,
+    "max_position_error_m": 0.81,
+    "final_yaw_error_deg": 0.6,
+    "drift_pct_of_path": 0.2
+  }
+}

@@ -32,6 +32,8 @@ python drone_inspection_sim.py --headless --video runs/sim1/run.mp4
 # 2) Real drone footage
 pip install ultralytics
 python drone_inspect_live.py --source drone.mp4 --weights yolov8n.pt --alert person --expect "person,fire extinguisher"
+# or describe what to look for in plain text (open-vocabulary YOLO-World); the report lists what is present / missing
+python drone_inspect_live.py --source drone.mp4 --vocab "fire extinguisher,person,door,box"
 
 # 3) Lidar
 python lidar_inspect.py --source sim                                   # self-test, reports drift vs ground truth

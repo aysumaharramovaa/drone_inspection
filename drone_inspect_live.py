@@ -22,6 +22,8 @@ Nümunələr:
     python drone_inspect_live.py --source dron.mp4 --weights yolov8n.pt
     python drone_inspect_live.py --source 0 --weights best.pt --alert person --expect "person,fire extinguisher"
     python drone_inspect_live.py --source udp://@0.0.0.0:11111 --save-video --headless
+    python drone_inspect_live.py --source dron.mp4 --vocab "fire extinguisher,person,door,box"
+        (--vocab: nəyi axtardığını mətnlə yaz; hesabat "var / yoxdur" göstərir)
 
 Pəncərədə 'q' = bitir və hesabat yaz.
 
@@ -55,9 +57,15 @@ class Track:
 class YoloTracker:
     """Ultralytics YOLO + ByteTrack. update(frame) -> [Track]"""
 
-    def __init__(self, weights, conf=0.35, imgsz=640, device=None, tracker="bytetrack.yaml"):
-        from ultralytics import YOLO
-        self.model, self.conf, self.imgsz = YOLO(weights), conf, imgsz
+    def __init__(self, weights, conf=0.35, imgsz=640, device=None, tracker="bytetrack.yaml", vocab=None):
+        if vocab:                                  # mətnlə verilən siyahı (YOLO-World)
+            from ultralytics import YOLOWorld
+            self.model = YOLOWorld(weights)
+            self.model.set_classes(vocab)
+        else:
+            from ultralytics import YOLO
+            self.model = YOLO(weights)
+        self.conf, self.imgsz = conf, imgsz
         self.device, self.tracker = device, tracker
 
     def update(self, frame):
@@ -206,13 +214,21 @@ def main(argv=None):
     ap.add_argument("--confirm", type=int, default=4, help="obyekt neçə kadrda görünəndən sonra təsdiqlənir")
     ap.add_argument("--alert", default="", help="xəbərdarlıq siniflər, vergüllə: person,knife")
     ap.add_argument("--expect", default="", help="yoxlama siyahısı (checklist): 'fire extinguisher,person'")
+    ap.add_argument("--vocab", default="", help="axtarılacaq obyektlər MƏTNLƏ (YOLO-World): "
+                    "'fire extinguisher,person,door'. Verilərsə --expect avtomatik eyni olur")
     ap.add_argument("--out", default="runs/live1")
     ap.add_argument("--save-video", action="store_true")
     ap.add_argument("--headless", action="store_true")
     a = ap.parse_args(argv)
 
     split = lambda s: {x.strip().lower() for x in s.split(",") if x.strip()}
-    det = YoloTracker(a.weights, a.conf, a.imgsz, a.device, a.tracker)
+    vocab = [x.strip() for x in a.vocab.split(",") if x.strip()]
+    if vocab:
+        if a.weights == "yolov8n.pt":
+            a.weights = "yolov8s-worldv2.pt"       # open-vocabulary model
+        if not a.expect:
+            a.expect = a.vocab
+    det = YoloTracker(a.weights, a.conf, a.imgsz, a.device, a.tracker, vocab or None)
     src = Source(a.source)
     insp = Inspector(a.out, split(a.alert), split(a.expect), a.confirm)
     writer, tracks, fps, idx, t0 = None, [], 0.0, 0, time.time()
