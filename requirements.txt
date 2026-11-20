@@ -1,0 +1,7 @@
+numpy
+opencv-python==4.11.0.86
+
+# optional
+# ultralytics          # drone_inspect_live.py (YOLO + ByteTrack)
+# djitellopy           # --source tello (camera stream only)
+# rplidar-roboticia    # lidar_inspect.py --source rplidar:COM3

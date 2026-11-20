@@ -1,3 +1,34 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+drone_inspect_live.py
+=====================
+REAL dronun kamerasının çəkdiyini yoxlayır (inspection / check-in).
+Dron obyektin içinə girəndə kameradan gələn hər şeyi analiz edir:
+
+    kamera/video  ->  YOLO + ByteTrack  ->  unikal obyektlər  ->  snapshot + hesabat
+
+Bu skript dronu İDARƏ ETMİR (uçuşu operator edir). Yalnız görüntünü yoxlayır.
+Simulyasiyadakı naviqasiya (drone_inspection_sim.py) ayrıca qalır.
+
+Görüntü mənbələri (--source):
+    0, 1, ...                      noutbuk/USB kamerası
+    C:\\videolar\\dron_ichəri.mp4     video fayl (dronun yazdığı video)
+    rtsp://... / udp://... / http  dron/analoq qəbuledici axını
+    tello                          DJI Tello (pip install djitellopy) — yalnız kamera axını,
+                                   uçuş komandası göndərilmir
+
+Nümunələr:
+    python drone_inspect_live.py --source dron.mp4 --weights yolov8n.pt
+    python drone_inspect_live.py --source 0 --weights best.pt --alert person --expect "person,fire extinguisher"
+    python drone_inspect_live.py --source udp://@0.0.0.0:11111 --save-video --headless
+
+Pəncərədə 'q' = bitir və hesabat yaz.
+
+Qeyd: VisDrone üzərində öyrədilmiş best.pt hava görüntüsü (yuxarıdan baxış) üçündür,
+daxili məkanda zəif işləyə bilər. Daxili yoxlama üçün COCO modeli (yolov8n/s.pt) ilə
+başla, sonra öz daxili məkan datanla fine-tune et.
+"""
 import argparse
 import json
 import os
@@ -17,6 +48,10 @@ class Track:
     conf: float
     bbox: tuple          # x1, y1, x2, y2
 
+
+# ----------------------------------------------------------------------------
+# Detektor + tracker
+# ----------------------------------------------------------------------------
 class YoloTracker:
     """Ultralytics YOLO + ByteTrack. update(frame) -> [Track]"""
 
