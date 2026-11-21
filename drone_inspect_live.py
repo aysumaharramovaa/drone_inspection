@@ -1,36 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-drone_inspect_live.py
-=====================
-REAL dronun kamerasının çəkdiyini yoxlayır (inspection / check-in).
-Dron obyektin içinə girəndə kameradan gələn hər şeyi analiz edir:
-
-    kamera/video  ->  YOLO + ByteTrack  ->  unikal obyektlər  ->  snapshot + hesabat
-
-Bu skript dronu İDARƏ ETMİR (uçuşu operator edir). Yalnız görüntünü yoxlayır.
-Simulyasiyadakı naviqasiya (drone_inspection_sim.py) ayrıca qalır.
-
-Görüntü mənbələri (--source):
-    0, 1, ...                      noutbuk/USB kamerası
-    C:\\videolar\\dron_ichəri.mp4     video fayl (dronun yazdığı video)
-    rtsp://... / udp://... / http  dron/analoq qəbuledici axını
-    tello                          DJI Tello (pip install djitellopy) — yalnız kamera axını,
-                                   uçuş komandası göndərilmir
-
-Nümunələr:
-    python drone_inspect_live.py --source dron.mp4 --weights yolov8n.pt
-    python drone_inspect_live.py --source 0 --weights best.pt --alert person --expect "person,fire extinguisher"
-    python drone_inspect_live.py --source udp://@0.0.0.0:11111 --save-video --headless
-    python drone_inspect_live.py --source dron.mp4 --vocab "fire extinguisher,person,door,box"
-        (--vocab: nəyi axtardığını mətnlə yaz; hesabat "var / yoxdur" göstərir)
-
-Pəncərədə 'q' = bitir və hesabat yaz.
-
-Qeyd: VisDrone üzərində öyrədilmiş best.pt hava görüntüsü (yuxarıdan baxış) üçündür,
-daxili məkanda zəif işləyə bilər. Daxili yoxlama üçün COCO modeli (yolov8n/s.pt) ilə
-başla, sonra öz daxili məkan datanla fine-tune et.
-"""
 import argparse
 import json
 import os
@@ -41,6 +8,7 @@ from dataclasses import dataclass
 import cv2
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+PROGRESS_EVERY_S = 5.0          # neçə saniyədən bir irəliləyiş yazılsın
 
 
 @dataclass
@@ -93,7 +61,7 @@ class Source:
             print(f"Tello bağlandı, batareya: {self.tello.get_battery()}%")
             self.tello.streamon()
             self.reader = self.tello.get_frame_read()
-            self.live, self.fps = True, 30.0
+            self.live, self.fps, self.total = True, 30.0, 0
             return
         s = int(src) if src.isdigit() else src
         self.cap = cv2.VideoCapture(s)
@@ -101,6 +69,7 @@ class Source:
             raise SystemExit(f"Mənbə açılmadı: {src}")
         self.live = isinstance(s, int) or str(s).lower().startswith(("rtsp", "udp", "http", "tcp"))
         self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+        self.total = 0 if self.live else max(int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0)
         if self.live:
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
@@ -232,7 +201,7 @@ def main(argv=None):
     src = Source(a.source)
     insp = Inspector(a.out, split(a.alert), split(a.expect), a.confirm)
     writer, tracks, fps, idx, t0 = None, [], 0.0, 0, time.time()
-    last_t = t0
+    last_t = last_print = t0
 
     try:
         while True:
@@ -267,6 +236,17 @@ def main(argv=None):
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
             idx += 1
+            now = time.time()
+            if now - last_print > PROGRESS_EVERY_S:
+                last_print = now
+                eta = ""
+                if src.total and fps > 0:
+                    eta = f", təxmini qalan ~{(src.total - idx) / a.stride / fps / 60:.1f} dəq"
+                tot = f"/{src.total}" if src.total else ""
+                print(f"  ... kadr {idx}{tot}, emal {fps:.1f} kadr/s, təsdiqlənmiş obyekt: "
+                      f"{sum(insp.counts().values())}{eta}", flush=True)
+    except KeyboardInterrupt:
+        print("\nCtrl+C — dayandırıldı, indiyə qədər olanlar üçün hesabat yazılır...")
     finally:
         src.close()
         if writer:

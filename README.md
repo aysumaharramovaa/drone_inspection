@@ -11,7 +11,7 @@ Everything is first validated in a computer simulation, then moved to real senso
 | File | What it does | Status |
 |---|---|---|
 | `drone_inspection_sim.py` | 2D indoor simulation: entry through the door, lidar mapping, frontier exploration, vision-based findings (simulated camera + detector), return and landing, JSON report | Tested in simulation |
-| `drone_inspect_live.py` | Checks what a **real drone camera** films (webcam, video file, RTSP/UDP, Tello): YOLO + ByteTrack, unique objects, snapshots, alerts, expected-items checklist | Pipeline tested on video; YOLO path not yet validated here |
+| `drone_inspect_live.py` | Checks what a **real or simulated drone camera** films (webcam, video file, RTSP/UDP, Tello, Gazebo `gz:` topic): YOLO + ByteTrack, unique objects, snapshots, alerts, expected-items checklist | Pipeline tested on video; YOLO path not yet validated here |
 | `lidar_inspect.py` | 2D lidar occupancy mapping with ICP scan matching. Sources: simulation, CSV replay, live RPLidar. Can record real scans for replay | Tested in simulation and CSV replay; RPLidar not yet tested on hardware |
 
 ![Simulation](docs/sim_demo.png)
@@ -34,6 +34,9 @@ pip install ultralytics
 python drone_inspect_live.py --source drone.mp4 --weights yolov8n.pt --alert person --expect "person,fire extinguisher"
 # or describe what to look for in plain text (open-vocabulary YOLO-World); the report lists what is present / missing
 python drone_inspect_live.py --source drone.mp4 --vocab "fire extinguisher,person,door,box"
+
+# 2b) Gazebo (gz-sim) drone camera: sudo apt install python3-gz-transport13 python3-gz-msgs10
+python drone_inspect_live.py --source gz:/world/warehouse/model/x500_0/link/base_link/sensor/front_camera/image --vocab "box,person"
 
 # 3) Lidar
 python lidar_inspect.py --source sim                                   # self-test, reports drift vs ground truth

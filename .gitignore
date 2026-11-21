@@ -1,7 +1,13 @@
+# Model weights
+*.pt
+*.pth
+weights/clip/
+
+
+# Generated files
+runs/
 __pycache__/
 *.pyc
-.venv/
-runs/
-*.pt
-*.onnx
-.DS_Store
+
+# IDE
+.vscode/
