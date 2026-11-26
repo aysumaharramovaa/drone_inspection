@@ -1,25 +1,26 @@
-
 from pymavlink import mavutil
 
-print("MAVLink yoxlanilir...")
-
 master = mavutil.mavlink_connection(
-    "udp:127.0.0.1:14540"
+    "udpin:127.0.0.1:14540"
 )
 
-for i in range(10):
+print("Hesabat")
+
+master.wait_heartbeat(timeout=30)
+
+print("Dron qosuldu!")
+print("System ID:", master.target_system)
+print("Component ID:", master.target_component)
+
+while True:
     msg = master.recv_match(
-        type="HEARTBEAT",
+        type="GLOBAL_POSITION_INT",
         blocking=True,
-        timeout=3
+        timeout=5
     )
 
     if msg:
-        print("\n--- HEARTBEAT ---")
-        print("System ID:", msg.get_srcSystem())
-        print("Component ID:", msg.get_srcComponent())
-        print("Vehicle Type:", msg.type)
-        print("Autopilot:", msg.autopilot)
-        print("Mode:", mavutil.mode_string_v10(msg))
-    else:
-        print("Heartbeat yoxdur!")
+        print("Latitude:", msg.lat / 1e7)
+        print("Longitude:", msg.lon / 1e7)
+        print("Altitude:", msg.relative_alt / 1000)
+        break
