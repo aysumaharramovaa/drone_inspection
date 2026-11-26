@@ -9,7 +9,7 @@ master = mavutil.mavlink_connection(
 master.wait_heartbeat(timeout=30)
 print("Dron qosuldu!")
 
-# GUIDED rejimi
+# GUIDED mode
 master.set_mode("GUIDED")
 time.sleep(2)
 
@@ -17,9 +17,30 @@ time.sleep(2)
 print("ARM emri gonderilir...")
 
 master.arducopter_arm()
-master.motors_armed_wait(timeout=15)
 
-print("Dron ARM edildi!")
+# ARM statusunu yoxla
+armed = False
+start = time.time()
+
+while time.time() - start < 15:
+    msg = master.recv_match(
+        type="HEARTBEAT",
+        blocking=True,
+        timeout=2
+    )
+
+    if msg:
+        armed = bool(
+            msg.base_mode &
+            mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+        )
+
+        if armed:
+            print("Dron ARM edildi!")
+            break
+
+if not armed:
+    raise TimeoutError("Dron ARM edilmedi!")
 
 # TAKEOFF
 print("Takeoff baslayir...")
@@ -32,7 +53,7 @@ master.mav.command_long_send(
     0, 0, 0, 0, 0, 0, 3
 )
 
-# 3 metr yukseklik gozle
+# Hündürlüyü yoxla
 while True:
     msg = master.recv_match(
         type="GLOBAL_POSITION_INT",
@@ -45,5 +66,5 @@ while True:
         print(f"Altitude: {altitude:.2f} m")
 
         if altitude >= 2.8:
-            print("3 metr yukseklik erreicht!")
+            print("Takeoff tamamlandi!")
             break
